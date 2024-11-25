@@ -21,6 +21,7 @@ class MyExpress {
     const serveStatic = this.#createStaticMiddleware(urlPath, dirPath, options);
     this.use("/", serveStatic);
   }
+  
 
   get = (url, ...cb) => this.route("GET", url, ...cb);
   post = (url, ...cb) => this.route("POST", url, ...cb);
@@ -69,14 +70,20 @@ class MyExpress {
   };
 
   #setupRequest = (req) => {
-    const { pathname, query } = url.parse(req.url, true);
-    req.pathname = pathname;
-    req.query = query;
+    const protocol = req.connection.encrypted ? "https" : "http";
+    const host = req.headers.host || "localhost";
+
+    const parsedUrl = new URL(req.url, `${protocol}://${host}`);
+
+    req.pathname = parsedUrl.pathname;
+    req.query = Object.fromEntries(parsedUrl.searchParams.entries());
+    req.searchParams = parsedUrl.searchParams;
   };
 
   #setupResponse = (res) => {
     res.status = (code) => this.#setStatus(res, code);
-    res.sendFile = (filepath) => this.#sendFile(res, filepath);
+    res.sendFile = (filepath, options = {}) =>
+      this.#sendFile(res, filepath, options);
     res.send = (data) => this.#sendResponse(res, data);
     res.json = (data) => this.#jsonResponse(res, data);
     res.set = (header, value) => {
@@ -154,13 +161,21 @@ class MyExpress {
   };
 
   #processRequest = async (req, res) => {
-    const route = findRoute(this.#routes, req);
-
-    if (!route) {
+    const routeMatch = findRoute(this.#routes, req);
+  
+    if (!routeMatch) {
       await this.#handleUnmatchedRoute(req, res);
       return;
     }
-    await this.#handleMatchedRoute(route, req, res);
+
+    req.params = { ...routeMatch.params };
+
+    // Add hash to req if you want to use it
+    if (routeMatch.hash) {
+      req.hash = routeMatch.hash;
+    }
+  
+    await this.#handleMatchedRoute(routeMatch, req, res);
   };
 
   #handleUnmatchedRoute = async (req, res) => {
@@ -180,9 +195,9 @@ class MyExpress {
     }
   };
 
-  #handleMatchedRoute = async (route, req, res) => {
+  #handleMatchedRoute = async (routeMatch, req, res) => {
     try {
-      await this.#executeRouteHandlers(route, req, res);
+      await this.#executeRouteHandlers(routeMatch, req, res);
     } catch (error) {
       await this.#executeErrorMiddleware(error, req, res, () => {});
     }
@@ -204,15 +219,23 @@ class MyExpress {
     return res;
   };
 
-  #sendFile = async (res, filePath, options) => {
-    const mimeType = getMimeType(filePath);
+  #sendFile = async (res, filePath, options = {}) => {
+    const mimeType = options.mimeType || getMimeType(filePath); // Use custom MIME type if provided
     res.setHeader("Content-Type", mimeType);
-    if (options.maxAge)
+  
+    if (options.maxAge) {
       res.setHeader("Cache-Control", `public, max-age=${options.maxAge}`);
-
-    const fileHandle = await fs.open(filePath, "r");
-    fileHandle.createReadStream().pipe(res);
-  };
+    }
+  
+    try {
+      const fileHandle = await fs.open(filePath, "r");
+      fileHandle.createReadStream().pipe(res);
+    } catch (error) {
+      console.error("Error serving file:", error);
+      res.writeHead(500, { "Content-Type": "text/plain" });
+      res.end("Internal Server Error");
+    }
+  };  
 
   #sendResponse = (res, data) => {
     if (typeof data === "object") return this.#jsonResponse(res, data);

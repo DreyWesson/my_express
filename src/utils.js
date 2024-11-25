@@ -1,6 +1,7 @@
 const path = require("path");
 const querystring = require("querystring");
 const { Writable } = require('stream');
+const url = require("url");
 
 
 const getMimeType = (filePath) => {
@@ -31,10 +32,17 @@ const getMimeType = (filePath) => {
 };
 
 function findRoute(routes, req) {
+  // Extract the pathname and search from the request
+  const [urlWithoutHash, hash] = req.url.split('#');
+  const [pathname, search] = urlWithoutHash.split('?');
+  
+  // Extract query parameters
+  const query = Object.fromEntries(new URLSearchParams(search || ''));
+
   for (const route of routes) {
     if (route.method === req.method) {
       const routeParts = route.url.split("/");
-      const urlParts = req.pathname.split("/");
+      const urlParts = pathname.split("/");
 
       if (routeParts.length === urlParts.length) {
         const params = {};
@@ -42,7 +50,7 @@ function findRoute(routes, req) {
 
         for (let i = 0; i < routeParts.length; i++) {
           if (routeParts[i].startsWith(":")) {
-            params[routeParts[i].slice(1)] = urlParts[i];
+            params[routeParts[i].slice(1)] = decodeURIComponent(urlParts[i]);
           } else if (routeParts[i] !== urlParts[i]) {
             match = false;
             break;
@@ -50,7 +58,12 @@ function findRoute(routes, req) {
         }
 
         if (match) {
-          return { ...route, params };
+          return { 
+            ...route, 
+            params,
+            query,
+            hash: hash || undefined
+          };
         }
       }
     }
