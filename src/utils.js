@@ -12,6 +12,20 @@ const getMimeType = (filePath) => {
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".json": "application/json",
+    ".pdf": "application/pdf",
+    ".txt": "text/plain",
+    ".xml": "application/xml",
+    ".mp3": "audio/mpeg",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".otf": "font/otf",
+    ".ico": "image/x-icon",
+    ".zip": "application/zip"
   };
   return contentTypes[ext] || "application/octet-stream";
 };
