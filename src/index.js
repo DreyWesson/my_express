@@ -79,6 +79,9 @@ class MyExpress {
     res.sendFile = (filepath) => this.#sendFile(res, filepath);
     res.send = (data) => this.#sendResponse(res, data);
     res.json = (data) => this.#jsonResponse(res, data);
+    res.set = (header, value) => {
+      res.setHeader(header, value);
+    };
   };
 
   #createStaticMiddleware = (urlPath, dirPath, options) => {
