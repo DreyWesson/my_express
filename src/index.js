@@ -28,6 +28,15 @@ class MyExpress {
   put = (url, ...cb) => this.route("PUT", url, ...cb);
   patch = (url, ...cb) => this.route("PATCH", url, ...cb);
   delete = (url, ...cb) => this.route("DELETE", url, ...cb);
+  head = (url, ...cb) => this.route("HEAD", url, ...cb);
+  options = (url, ...cb) => this.route("OPTIONS", url, ...cb);
+  trace = (url, ...cb) => this.route("TRACE", url, ...cb);
+  connect = (url, ...cb) => this.route("CONNECT", url, ...cb);
+  all = (url, ...cb) => {
+    const methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE", "CONNECT"];
+    methods.forEach((method) => this.route(method, url, ...cb));
+  };
+  
 
   use(path, middleware) {
     if (typeof path === "function") {
