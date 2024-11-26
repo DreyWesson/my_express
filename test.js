@@ -45,6 +45,15 @@ myExpress.get("/api", (req, res) => {
   res.status(200).json({ data: "API Middleware test" });
 });
 
+myExpress.post("/api/test-json", (req, res) => {
+  // If the jsonParser works correctly, the body will be parsed and available in `req.body`.
+  if (req.body) {
+    res.status(200).json({ message: "JSON parsed successfully!", data: req.body });
+  } else {
+    res.status(400).json({ error: "Failed to parse JSON." });
+  }
+});
+
 // New routes to showcase `setupRequest` functionality
 myExpress.get("/query", (req, res) => {
   console.log("Query string route handler executed");
@@ -55,6 +64,7 @@ myExpress.get("/pathname", (req, res) => {
   console.log("Pathname route handler executed");
   res.json({ pathname: req.pathname });
 });
+
 
 // Static file middleware after route definitions
 myExpress.static("/", "public");

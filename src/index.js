@@ -1,8 +1,7 @@
 const http = require("http");
 const fs = require("fs/promises");
 const path = require("path");
-const url = require("url");
-const { getMimeType, findRoute, parseBody } = require("./utils");
+const { getMimeType, findRoute, jsonParser, urlencodedParser } = require("./utils");
 
 class MyExpress {
   #server = null;
@@ -71,10 +70,6 @@ class MyExpress {
     this.#setupRequest(req);
     this.#setupResponse(res);
 
-    if (["POST", "PUT", "PATCH"].includes(req.method)) {
-      req.body = await parseBody(req); // Use parseBody for parsing request body
-    }
-
     await this.#executeMiddleware(req, res);
   };
 
@@ -127,26 +122,32 @@ class MyExpress {
 
   #executeMiddleware = async (req, res) => {
     let middlewareIndex = 0;
-
+  
     const next = async (error) => {
       if (res.writableEnded) return;
-
+  
       if (error) return this.#executeErrorMiddleware(error, req, res, next);
-
+  
       if (middlewareIndex < this.#middleware.length) {
         const { path, middleware } = this.#middleware[middlewareIndex++];
-        this.#handleMiddleware(req, res, next, path, middleware);
+        await this.#handleMiddleware(req, res, next, path, middleware);
       } else {
-        await this.#processRequest(req, res); // Move to route handling
+        await this.#processRequest(req, res);
       }
     };
     await next();
   };
-
+  
   #handleMiddleware = async (req, res, next, path, middleware) => {
     if (req.pathname.startsWith(path)) {
       try {
-        await middleware(req, res, next);
+        await new Promise((resolve) => {
+          middleware(req, res, (err) => {
+            if (err) next(err);
+            else resolve();
+          });
+        });
+        await next();
       } catch (error) {
         next(error);
       }
@@ -179,11 +180,6 @@ class MyExpress {
 
     req.params = { ...routeMatch.params };
 
-    // Add hash to req if you want to use it
-    if (routeMatch.hash) {
-      req.hash = routeMatch.hash;
-    }
-  
     await this.#handleMatchedRoute(routeMatch, req, res);
   };
 
@@ -268,4 +264,4 @@ class MyExpress {
   };
 }
 
-module.exports = { MyExpress };
+module.exports = { MyExpress, jsonParser, urlencodedParser };

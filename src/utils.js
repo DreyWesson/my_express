@@ -32,11 +32,9 @@ const getMimeType = (filePath) => {
 };
 
 function findRoute(routes, req) {
-  // Extract the pathname and search from the request
   const [urlWithoutHash, hash] = req.url.split('#');
   const [pathname, search] = urlWithoutHash.split('?');
-  
-  // Extract query parameters
+
   const query = Object.fromEntries(new URLSearchParams(search || ''));
 
   for (const route of routes) {
@@ -71,7 +69,7 @@ function findRoute(routes, req) {
   return null;
 }
 
-async function parseBody(req) {
+async function bodyParser(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     
@@ -84,8 +82,9 @@ async function parseBody(req) {
 
     writable.on('finish', () => {
       const body = Buffer.concat(chunks);
+      const contentType = req.headers["content-type"];
+      
       try {
-        const contentType = req.headers["content-type"];
         if (contentType === "application/json") {
           resolve(JSON.parse(body.toString()));
         } else if (contentType === "application/x-www-form-urlencoded") {
@@ -109,4 +108,55 @@ function parseQueryString(req) {
   return parsedUrl.query;
 }
 
-module.exports = { getMimeType, findRoute, parseBody, parseQueryString };
+function urlencodedParser(req, res, next) {
+  const contentType = req.headers['content-type'];
+
+  if (
+    contentType?.includes('application/x-www-form-urlencoded') &&
+    !contentType.startsWith('multipart/form-data') &&
+    !contentType.startsWith('video/')
+  ) {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      try {
+        req.body = querystring.parse(body);
+        next();
+      } catch (err) {
+        next(err);
+      }
+    });
+  } else {
+    next();
+  }
+}
+
+function jsonParser(req, res, next) {
+  const contentType = req.headers['content-type'];
+
+  if (
+    contentType?.includes('application/json') &&
+    !contentType.startsWith('multipart/form-data')
+  ) {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      try {
+        req.body = JSON.parse(body);
+        next();
+      } catch (err) {
+        next(err);
+      }
+    });
+  } else {
+    next();
+  }
+}
+
+
+
+module.exports = { getMimeType, findRoute, bodyParser, parseQueryString , jsonParser, urlencodedParser};
