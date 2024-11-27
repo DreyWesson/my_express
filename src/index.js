@@ -1,7 +1,12 @@
 const http = require("http");
 const fs = require("fs/promises");
 const path = require("path");
-const { getMimeType, findRoute, jsonParser, urlencodedParser } = require("./utils");
+const {
+  getMimeType,
+  findRoute,
+  jsonParser,
+  urlencodedParser,
+} = require("./utils");
 
 class MyExpress {
   #server = null;
@@ -20,7 +25,6 @@ class MyExpress {
     const serveStatic = this.#createStaticMiddleware(urlPath, dirPath, options);
     this.use("/", serveStatic);
   }
-  
 
   get = (url, ...cb) => this.route("GET", url, ...cb);
   post = (url, ...cb) => this.route("POST", url, ...cb);
@@ -32,10 +36,19 @@ class MyExpress {
   trace = (url, ...cb) => this.route("TRACE", url, ...cb);
   connect = (url, ...cb) => this.route("CONNECT", url, ...cb);
   all = (url, ...cb) => {
-    const methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE", "CONNECT"];
+    const methods = [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "HEAD",
+      "OPTIONS",
+      "TRACE",
+      "CONNECT",
+    ];
     methods.forEach((method) => this.route(method, url, ...cb));
   };
-  
 
   use(path, middleware) {
     if (typeof path === "function") {
@@ -49,8 +62,27 @@ class MyExpress {
     this.#routes.push({ method, url, handlers: handlers.flat() });
   };
 
-  listen = (port, cb) => {
-    this.#server.listen(port, "localhost", cb);
+  listen = (port, host, callback) => {
+    if (typeof host === "function") {
+      callback = host;
+      host = undefined;
+    }
+
+    host = host || "0.0.0.0";
+
+    port = Number(port);
+
+    if (isNaN(port) || port <= 0 || port > 65535) {
+      throw new Error("Invalid port number");
+    }
+
+    this.#server.listen(port, host, () => {
+      if (typeof callback === "function") {
+        callback();
+      }
+    });
+
+    return this;
   };
 
   // Private methods
@@ -122,12 +154,12 @@ class MyExpress {
 
   #executeMiddleware = async (req, res) => {
     let middlewareIndex = 0;
-  
+
     const next = async (error) => {
       if (res.writableEnded) return;
-  
+
       if (error) return this.#executeErrorMiddleware(error, req, res, next);
-  
+
       if (middlewareIndex < this.#middleware.length) {
         const { path, middleware } = this.#middleware[middlewareIndex++];
         await this.#handleMiddleware(req, res, next, path, middleware);
@@ -137,7 +169,7 @@ class MyExpress {
     };
     await next();
   };
-  
+
   #handleMiddleware = async (req, res, next, path, middleware) => {
     if (req.pathname.startsWith(path)) {
       try {
@@ -172,7 +204,7 @@ class MyExpress {
 
   #processRequest = async (req, res) => {
     const routeMatch = findRoute(this.#routes, req);
-  
+
     if (!routeMatch) {
       await this.#handleUnmatchedRoute(req, res);
       return;
@@ -227,11 +259,11 @@ class MyExpress {
   #sendFile = async (res, filePath, options = {}) => {
     const mimeType = options.mimeType || getMimeType(filePath); // Use custom MIME type if provided
     res.setHeader("Content-Type", mimeType);
-  
+
     if (options.maxAge) {
       res.setHeader("Cache-Control", `public, max-age=${options.maxAge}`);
     }
-  
+
     try {
       const fileHandle = await fs.open(filePath, "r");
       fileHandle.createReadStream().pipe(res);
@@ -240,7 +272,7 @@ class MyExpress {
       res.writeHead(500, { "Content-Type": "text/plain" });
       res.end("Internal Server Error");
     }
-  };  
+  };
 
   #sendResponse = (res, data) => {
     if (typeof data === "object") return this.#jsonResponse(res, data);
