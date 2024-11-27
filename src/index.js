@@ -20,21 +20,49 @@ class MyExpress {
     this.#server.on("error", this.#handleServerError);
   }
 
-  static(urlPath, dirPath, options = {}) {
+  static = (urlPath, dirPath, options = {}) => {
     this.#staticDir = dirPath; // Store for SPA fallback
     const serveStatic = this.#createStaticMiddleware(urlPath, dirPath, options);
     this.use("/", serveStatic);
-  }
+    return this;
+  };
 
-  get = (url, ...cb) => this.route("GET", url, ...cb);
-  post = (url, ...cb) => this.route("POST", url, ...cb);
-  put = (url, ...cb) => this.route("PUT", url, ...cb);
-  patch = (url, ...cb) => this.route("PATCH", url, ...cb);
-  delete = (url, ...cb) => this.route("DELETE", url, ...cb);
-  head = (url, ...cb) => this.route("HEAD", url, ...cb);
-  options = (url, ...cb) => this.route("OPTIONS", url, ...cb);
-  trace = (url, ...cb) => this.route("TRACE", url, ...cb);
-  connect = (url, ...cb) => this.route("CONNECT", url, ...cb);
+  get = (url, ...cb) => {
+    this.route("GET", url, ...cb);
+    return this;
+  };
+  post = (url, ...cb) => {
+    this.route("POST", url, ...cb);
+    return this;
+  };
+  put = (url, ...cb) => {
+    this.route("PUT", url, ...cb);
+    return this;
+  };
+  patch = (url, ...cb) => {
+    this.route("PATCH", url, ...cb);
+    return this;
+  };
+  delete = (url, ...cb) => {
+    this.route("DELETE", url, ...cb);
+    return this;
+  };
+  head = (url, ...cb) => {
+    this.route("HEAD", url, ...cb);
+    return this;
+  };
+  options = (url, ...cb) => {
+    this.route("OPTIONS", url, ...cb);
+    return this;
+  };
+  trace = (url, ...cb) => {
+    this.route("TRACE", url, ...cb);
+    return this;
+  };
+  connect = (url, ...cb) => {
+    this.route("CONNECT", url, ...cb);
+    return this;
+  };
   all = (url, ...cb) => {
     const methods = [
       "GET",
@@ -48,6 +76,7 @@ class MyExpress {
       "CONNECT",
     ];
     methods.forEach((method) => this.route(method, url, ...cb));
+    return this;
   };
 
   use(path, middleware) {
@@ -56,10 +85,12 @@ class MyExpress {
       path = "/";
     }
     this.#addMiddleware(path, middleware);
+    return this;
   }
 
   route = (method, url, ...handlers) => {
     this.#routes.push({ method, url, handlers: handlers.flat() });
+    return this;
   };
 
   listen = (port, host, callback) => {
@@ -81,8 +112,6 @@ class MyExpress {
         callback();
       }
     });
-
-    return this;
   };
 
   // Private methods
